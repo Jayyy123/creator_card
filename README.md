@@ -21,10 +21,13 @@ Creator Cards is a "link-in-bio" style API. Creators can create a card with thei
 ### Key Features
 
 - ULID-based IDs stored as `_id` in MongoDB, serialized as `id` in API responses
-- Slug auto-generation from title when not provided
+- Slug auto-generation from title with hyphen collapsing and normalization
 - Private cards with 6-character alphanumeric access codes
 - Draft cards that are never publicly retrievable
 - Paranoid soft-delete (cards are marked deleted, not removed)
+- Creator reference ownership validation on delete
+- Duplicate link URL prevention
+- Non-empty rates array enforcement when service_rates is provided
 - VSL validation for field-level rules, custom business rule error codes for everything else
 
 ---

@@ -25,6 +25,11 @@ async function deleteCreatorCard(serviceData, options = {}) {
       throwAppError(CreatorCardMessages.CARD_NOT_FOUND, 'NF01');
     }
 
+    // verify the requester owns this card
+    if (card.creator_reference !== data.creator_reference) {
+      throwAppError(CreatorCardMessages.CARD_NOT_FOUND, 'NF01');
+    }
+
     // soft delete - set deleted timestamp
     const now = Date.now();
     await CreatorCard.updateOne({

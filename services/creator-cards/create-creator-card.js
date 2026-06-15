@@ -61,10 +61,20 @@ function generateSlugFromTitle(title) {
   for (let i = 0; i < lowered.length; i++) {
     const c = lowered[i];
     if (c === ' ' || c === '\t') {
-      slug += '-';
+      // collapse consecutive hyphens
+      if (slug.length > 0 && slug[slug.length - 1] !== '-') {
+        slug += '-';
+      }
     } else if (isValidSlugChar(c)) {
       slug += c;
     }
+  }
+  // strip leading/trailing hyphens
+  while (slug.length > 0 && slug[0] === '-') {
+    slug = slug.substring(1);
+  }
+  while (slug.length > 0 && slug[slug.length - 1] === '-') {
+    slug = slug.substring(0, slug.length - 1);
   }
   return slug;
 }
@@ -122,6 +132,14 @@ async function createCreatorCard(serviceData, options = {}) {
         );
       }
 
+      // rates array must not be empty
+      if (!data.service_rates.rates || !data.service_rates.rates.length) {
+        throwAppError(
+          'rates must be a non-empty array',
+          ERROR_CODE.INVLDDATA
+        );
+      }
+
       // validate each rate amount is a positive integer
       for (let i = 0; i < data.service_rates.rates.length; i++) {
         const rate = data.service_rates.rates[i];
@@ -136,6 +154,7 @@ async function createCreatorCard(serviceData, options = {}) {
 
     // validate link urls
     if (data.links && data.links.length) {
+      const seenUrls = [];
       for (let i = 0; i < data.links.length; i++) {
         const link = data.links[i];
         if (!link.url.startsWith('http://') && !link.url.startsWith('https://')) {
@@ -144,6 +163,15 @@ async function createCreatorCard(serviceData, options = {}) {
             ERROR_CODE.INVLDDATA
           );
         }
+
+        // prevent duplicate urls on the same card
+        if (seenUrls.indexOf(link.url) !== -1) {
+          throwAppError(
+            'duplicate link URLs are not allowed',
+            ERROR_CODE.INVLDDATA
+          );
+        }
+        seenUrls.push(link.url);
       }
     }
 
