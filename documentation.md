@@ -1,9 +1,12 @@
-# Node.js Backend Project - Architecture Guide
+# Creator Cards API - Architecture Guide
 
-A Node.js backend application following clean architecture principles, functional programming paradigms, and best practices.
+A Node.js backend microservice for creator profile cards, following clean architecture principles, functional programming paradigms, and best practices.
 
 ## Table of Contents
 
+- [Project Overview](#project-overview)
+- [API Reference](#api-reference)
+- [Deployment & CI/CD](#deployment--cicd)
 - [Architecture Overview](#architecture-overview)
 - [Programming Conventions](#programming-conventions)
 - [Core Modules (`@app-core`)](#core-modules-app-core)
@@ -17,6 +20,114 @@ A Node.js backend application following clean architecture principles, functiona
 - [Logging](#logging)
 - [Code Quality Rules](#code-quality-rules)
 - [Best Practices](#best-practices)
+
+---
+
+## Project Overview
+
+Creator Cards is a microservice API that lets creators publish shareable profile cards with links and service rates. Think "link-in-bio" cards with attached rate cards for sponsorship pricing.
+
+Each card has:
+- A **title** and optional **description**
+- A unique **slug** for public sharing (auto-generated from title if not provided)
+- Optional **links** (YouTube, Instagram, etc.)
+- Optional **service rates** with currency and pricing in minor units
+- A **status** (`draft` or `published`) — drafts are never publicly visible
+- An **access type** (`public` or `private`) — private cards require a 6-character access code
+
+Cards use ULID identifiers stored as `_id` in MongoDB but always returned as `id` in API responses. Deletion is soft — a `deleted` timestamp is set, and the card becomes invisible to the public retrieval endpoint.
+
+---
+
+## API Reference
+
+### POST /creator-cards
+
+Creates a new creator card.
+
+**Request:**
+```json
+{
+  "title": "George Cooks",
+  "description": "Weekly cooking podcast",
+  "slug": "george-cooks",
+  "creator_reference": "crt_8f2k1m9x4p7w3q5z",
+  "links": [{"title": "YouTube", "url": "https://youtube.com/@georgecooks"}],
+  "service_rates": {
+    "currency": "NGN",
+    "rates": [{"name": "IG Story Post", "description": "One story mention", "amount": 5000000}]
+  },
+  "status": "published"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "success",
+  "message": "Creator Card Created Successfully.",
+  "data": {
+    "id": "01JG8XYZA2B3C4D5E6F7G8H9J0",
+    "title": "George Cooks",
+    "slug": "george-cooks",
+    "access_type": "public",
+    "access_code": null,
+    "created": 1767052800000,
+    "updated": 1767052800000,
+    "deleted": null
+  }
+}
+```
+
+### GET /creator-cards/:slug
+
+Retrieves a published card by slug. Private cards require `?access_code=XXXXXX`.
+
+Access rules applied in order:
+1. Card not found → 404, `NF01`
+2. Card is draft → 404, `NF02`
+3. Private card, no access code → 403, `AC03`
+4. Private card, wrong access code → 403, `AC04`
+
+The `access_code` field is never included in retrieval responses.
+
+### DELETE /creator-cards/:slug
+
+Soft-deletes a card. Requires `creator_reference` in the body. Returns the deleted card in the same format as the creation response, with `deleted` timestamp set.
+
+---
+
+## Deployment & CI/CD
+
+**Live URL:** `https://creator-cards-api-aace412f761c.herokuapp.com`
+
+### Branch Strategy
+
+| Branch | Purpose |
+|--------|--------|
+| `main` | Production — auto-deploys to Heroku |
+| `staging` | Development — PRs go from here to main |
+
+### PR Workflow
+
+1. Develop on `staging`
+2. Push: `git push origin staging`
+3. Open PR: `staging` → `main`
+4. Review, then **squash and merge**
+5. GitHub Actions auto-deploys to Heroku
+
+### GitHub Actions
+
+The deploy workflow (`.github/workflows/deploy.yml`) runs on every push to `main`. It pushes the code to Heroku's git remote using the `HEROKU_API_KEY` stored as a GitHub secret.
+
+### Environment Variables
+
+| Variable | Description |
+|----------|------------|
+| `PORT` | Server port (Heroku sets this automatically) |
+| `APP_NAME` | Application name |
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `HEROKU_API_KEY` | GitHub secret for auto-deploy |
 
 ---
 
@@ -1136,11 +1247,11 @@ curl http://localhost:3000
 
 ## Need Help?
 
-- Check existing services in `services/` for patterns
-- Review specs in `specs/` for validation examples
-- Read endpoint implementations in `endpoints/`
+- Check existing services in `services/creator-cards/` for working examples
+- Review the Creator Card model in `models/creator-card.js`
+- Read endpoint implementations in `endpoints/creator-cards/`
 
 ---
 
-**Version**: 2.0  
-**Last Updated**: November 2025
+**Version**: 2.1  
+**Last Updated**: June 2026
